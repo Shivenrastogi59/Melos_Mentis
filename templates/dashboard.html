@@ -1,0 +1,277 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Therapy Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+</head>
+
+<body>
+
+
+
+    <div class="container">
+        <div class="left-panel">
+            <video id="video-stream" autoplay playsinline></video>
+            <canvas id="video-canvas" style="display:none;"></canvas>
+
+            <div class="info-box" id="emotion-context" style="display: none;">
+                <p><b>Emotion:</b> <span id="emotion-text">-</span></p>
+                <p><b>Context:</b> <span id="context-text">-</span></p>
+            </div>
+
+            <button class="music-button" id="start-music">Start Music Therapy</button>
+
+            <button id="playMusic" style="display: none;">Play Music</button>
+            <audio id="musicPlayer" controls style="display: none;">
+                <source src="/static/generated_tune.wav" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+
+        <div class="right-panel">
+            <div class="chatbox" id="chatbox">
+                <div class="bot-message">Hello! How are you feeling today?</div>
+            </div>
+            <input type="text" id="user-input" placeholder="Type a message..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script>
+        const socket = io.connect("http://127.0.0.1:5000");
+        const startButton = document.getElementById("start-music");
+        const emotionText = document.getElementById("emotion-text");
+        const contextText = document.getElementById("context-text");
+        const emotionContextBox = document.getElementById("emotion-context");
+        const video = document.getElementById("video-stream");
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+                startSendingFrames(stream);
+            })
+            .catch((error) => {
+                console.error("Error accessing camera:", error);
+            });
+
+        function startSendingFrames(stream) {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            setInterval(() => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                canvas.toBlob((blob) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => {
+                        const base64data = reader.result.split(",")[1];
+                        socket.emit("send_frame", { image: base64data });
+                    };
+                }, "image/jpeg");
+            }, 1000); 
+        }
+
+        startButton.addEventListener("click", function () {
+            startButton.disabled = true;
+            emotionText.textContent = "Detecting...";
+            contextText.textContent = "Detecting...";
+            emotionContextBox.style.display = "block";
+
+            socket.emit("start_detection");
+        });
+
+            socket.on("detection_result", function (data) {
+                emotionText.textContent = data.emotion || "Unknown";
+                contextText.textContent = data.context.join(", ") || "None detected";
+                startButton.disabled = false;
+            });
+
+        document.getElementById("sendButton").addEventListener("click", function () {
+            sendMessage();
+        });
+
+        document.getElementById("user-input").addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+        function sendMessage() {
+            let userInput = document.getElementById("user-input").value;
+            if (userInput.trim() === "") return;
+
+            let chatbox = document.getElementById("chatbox");
+            let userMessage = document.createElement("div");
+            userMessage.className = "user-message";
+            userMessage.textContent = userInput;
+            chatbox.appendChild(userMessage);
+
+            fetch("/chat", {
+                method: "POST",
+                body: JSON.stringify({ message: userInput }),
+                headers: { "Content-Type": "application/json" }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    let botMessage = document.createElement("div");
+                    botMessage.className = "bot-message";
+                    botMessage.textContent = data.response;
+                    chatbox.appendChild(botMessage);
+                });
+
+            document.getElementById("user-input").value = "";
+        }
+
+        document.getElementById("start-music").addEventListener("click", function () {
+            document.getElementById("emotion-text").innerText = "Detecting emotion...";
+            document.getElementById("context-text").innerText = "Detecting context...";
+
+            fetch("/start_analysis", { method: "GET" })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("emotion-text").innerText = `Emotion: ${data.emotion}`;
+                    document.getElementById("context-text").innerText = `Context: ${data.context.join(", ")}`;
+                })
+                .catch(error => console.error("Error:", error));
+        });
+
+    </script>
+
+</body>
+
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Therapy Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <video id="video-stream" autoplay playsinline></video>
+            <canvas id="video-canvas" style="display:none;"></canvas>
+
+            <!-- Emotion & Context Display -->
+            <div class="info-box" id="emotion-context" style="display: none;">
+                <p><b>Emotion:</b> <span id="emotion-text">-</span></p>
+                <p><b>Context:</b> <span id="context-text">-</span></p>
+            </div>
+
+            <button class="music-button" id="start-music">Start Music Therapy</button>
+            <button id="playMusic" style="display: none;">Play Music</button>
+            <audio id="musicPlayer" controls style="display: none;">
+                <source src="/static/generated_tune.wav" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+
+        <!-- Right Panel (Chatbot) -->
+        <div class="right-panel">
+            <div class="chatbox" id="chatbox">
+                <div class="bot-message">Hello! How are you feeling today?</div>
+            </div>
+            <input type="text" id="user-input" placeholder="Type a message..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io.connect("http://127.0.0.1:5000");
+        const startButton = document.getElementById("start-music");
+        const emotionText = document.getElementById("emotion-text");
+        const contextText = document.getElementById("context-text");
+        const emotionContextBox = document.getElementById("emotion-context");
+        const video = document.getElementById("video-stream");
+        
+        // Request camera access
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+                startSendingFrames(stream);
+            })
+            .catch((error) => console.error("Error accessing camera:", error));
+
+        function startSendingFrames(stream) {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            setInterval(() => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(blob);
+                    reader.onloadend = () => {
+                        socket.emit("send_frame", { image: reader.result.split(",")[1] });
+                    };
+                }, "image/jpeg");
+            }, 1000);
+        }
+
+        startButton.addEventListener("click", function () {
+            startButton.disabled = true;
+            emotionText.textContent = "Detecting...";
+            contextText.textContent = "Detecting...";
+            emotionContextBox.style.display = "block";
+            
+            fetch("/start_analysis", { method: "GET" })
+                .then(response => response.json())
+                .then(data => {
+                    emotionText.textContent = data.emotion || "Unknown";
+                    contextText.textContent = data.context ? data.context.join(", ") : "None detected";
+                    startButton.disabled = false;
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    emotionText.textContent = "Error detecting emotion";
+                    contextText.textContent = "Error detecting context";
+                    startButton.disabled = false;
+                });
+        });
+
+        function sendMessage() {
+            let userInput = document.getElementById("user-input").value.trim();
+            if (!userInput) return;
+            
+            let chatbox = document.getElementById("chatbox");
+            let userMessage = document.createElement("div");
+            userMessage.className = "user-message";
+            userMessage.textContent = userInput;
+            chatbox.appendChild(userMessage);
+
+            fetch("/chat", {
+                method: "POST",
+                body: JSON.stringify({ message: userInput }),
+                headers: { "Content-Type": "application/json" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                let botMessage = document.createElement("div");
+                botMessage.className = "bot-message";
+                botMessage.textContent = data.response;
+                chatbox.appendChild(botMessage);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            });
+
+            document.getElementById("user-input").value = "";
+        }
+        
+        document.getElementById("sendButton").addEventListener("click", sendMessage);
+        document.getElementById("user-input").addEventListener("keypress", function (event) {
+            if (event.key === "Enter") sendMessage();
+        });
+    </script>
+</body>
+</html>
